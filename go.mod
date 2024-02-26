@@ -2,6 +2,8 @@ module github.com/opentdp/wechat-rest
 
 go 1.21
 
+replace github.com/NeufHuang/go-llm-api => github.com/liudding/go-llm-api v0.1.18
+
 require (
 	github.com/clbanning/mxj v1.8.4
 	github.com/gin-gonic/gin v1.9.1
