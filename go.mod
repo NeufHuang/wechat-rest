@@ -8,7 +8,7 @@ require (
 	github.com/google/generative-ai-go v0.8.0
 	github.com/knadh/koanf v1.5.0
 	github.com/knadh/koanf/v2 v2.1.0
-	github.com/liudding/go-llm-api v0.1.18
+	github.com/NeufHuang/go-llm-api v0.1.18
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opentdp/go-helper v0.5.9
 	github.com/sashabaranov/go-openai v1.19.4
