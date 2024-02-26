@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/liudding/go-llm-api/xunfei"
+	"github.com/NeufHuang/go-llm-api/xunfei"
 
 	"github.com/opentdp/wechat-rest/args"
 )
