@@ -3,21 +3,21 @@ package wrobot
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/opentdp/wechat-rest/dbase/profile"
+	"github.com/opentdp/wrest-chat/dbase/profile"
+	"github.com/opentdp/wrest-chat/wclient/robot"
 )
 
 type Profile struct{}
 
-// @Summary 配置列表
+// @Summary 用户配置列表
 // @Produce json
 // @Tags BOT::用户配置
-// @Param body body profile.FetchAllParam true "获取配置列表参数"
-// @Success 200 {object} []tables.Profile
+// @Param body body profile.FetchAllParam true "获取用户配置列表参数"
+// @Success 200 {array} tables.Profile
 // @Router /bot/profile/list [post]
 func (*Profile) list(c *gin.Context) {
 
 	var rq *profile.FetchAllParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -31,16 +31,15 @@ func (*Profile) list(c *gin.Context) {
 
 }
 
-// @Summary 获取配置
+// @Summary 获取用户配置
 // @Produce json
 // @Tags BOT::用户配置
-// @Param body body profile.FetchParam true "获取配置参数"
+// @Param body body profile.FetchParam true "获取用户配置参数"
 // @Success 200 {object} tables.Profile
 // @Router /bot/profile/detail [post]
 func (*Profile) detail(c *gin.Context) {
 
 	var rq *profile.FetchParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -54,16 +53,15 @@ func (*Profile) detail(c *gin.Context) {
 
 }
 
-// @Summary 添加配置
+// @Summary 添加用户配置
 // @Produce json
 // @Tags BOT::用户配置
-// @Param body body profile.CreateParam true "添加配置参数"
+// @Param body body profile.CreateParam true "添加用户配置参数"
 // @Success 200
 // @Router /bot/profile/create [post]
 func (*Profile) create(c *gin.Context) {
 
 	var rq *profile.CreateParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -72,22 +70,22 @@ func (*Profile) create(c *gin.Context) {
 	if id, err := profile.Create(rq); err == nil {
 		c.Set("Message", "添加成功")
 		c.Set("Payload", id)
+		robot.Reset()
 	} else {
 		c.Set("Error", err)
 	}
 
 }
 
-// @Summary 修改配置
+// @Summary 修改用户配置
 // @Produce json
 // @Tags BOT::用户配置
-// @Param body body profile.UpdateParam true "修改配置参数"
+// @Param body body profile.UpdateParam true "修改用户配置参数"
 // @Success 200
 // @Router /bot/profile/update [post]
 func (*Profile) update(c *gin.Context) {
 
 	var rq *profile.UpdateParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -95,22 +93,22 @@ func (*Profile) update(c *gin.Context) {
 
 	if err := profile.Update(rq); err == nil {
 		c.Set("Message", "更新成功")
+		robot.Reset()
 	} else {
 		c.Set("Error", err)
 	}
 
 }
 
-// @Summary 删除配置
+// @Summary 删除用户配置
 // @Produce json
 // @Tags BOT::用户配置
-// @Param body body profile.DeleteParam true "删除配置参数"
+// @Param body body profile.DeleteParam true "删除用户配置参数"
 // @Success 200
 // @Router /bot/profile/delete [post]
 func (*Profile) delete(c *gin.Context) {
 
 	var rq *profile.DeleteParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -118,6 +116,7 @@ func (*Profile) delete(c *gin.Context) {
 
 	if err := profile.Delete(rq); err == nil {
 		c.Set("Message", "删除成功")
+		robot.Reset()
 	} else {
 		c.Set("Error", err)
 	}

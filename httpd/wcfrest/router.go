@@ -1,16 +1,19 @@
 package wcfrest
 
 import (
+	"strings"
+
 	"github.com/opentdp/go-helper/httpd"
 
-	"github.com/opentdp/wechat-rest/httpd/midware"
-	"github.com/opentdp/wechat-rest/wclient"
+	"github.com/opentdp/wrest-chat/args"
+	"github.com/opentdp/wrest-chat/httpd/middle"
+	"github.com/opentdp/wrest-chat/wclient"
 )
 
 func Route() {
 
-	rg := httpd.Group("/api")
-	rg.Use(midware.OutputHandle, midware.ApiGuard)
+	rg := httpd.Group("/wcf")
+	rg.Use(middle.OutputHandle, middle.ApiGuard)
 
 	ctrl := &Controller{wclient.Register()}
 
@@ -56,5 +59,13 @@ func Route() {
 	rg.POST("disable_receiver", ctrl.disableReceiver)
 
 	rg.GET("socket_receiver", ctrl.socketReceiver)
+
+	// 启用 HTTP 消息推送
+
+	if args.Web.PushUrl != "" {
+		for _, url := range strings.Split(args.Web.PushUrl, "\n") {
+			ctrl.EnrollReceiver(true, urlReciever(url))
+		}
+	}
 
 }

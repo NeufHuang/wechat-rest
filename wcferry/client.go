@@ -2,26 +2,23 @@ package wcferry
 
 import (
 	"errors"
-	"os/exec"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/opentdp/go-helper/filer"
-	"github.com/opentdp/go-helper/logman"
 	"github.com/opentdp/go-helper/onquit"
 )
 
+const Wcf_Version = "39.2.4.0"
+const Wechat_Version = "3.9.10.27"
+
 type Client struct {
-	WcfBinary  string     // wcf.exe 路径
+	SdkLibrary string     // sdk.dll 路径
 	ListenAddr string     // wcf 监听地址
 	ListenPort int        // wcf 监听端口
-	WeChatAuto bool       // 自动启停微信
 	CmdClient  *CmdClient // 命令客户端
 	MsgClient  *MsgClient // 消息客户端
 }
 
-// 启动 wcf 服务
+// 注册消息服务
 // return error 错误信息
 func (c *Client) Connect() error {
 	if c.ListenAddr == "" {
@@ -30,21 +27,21 @@ func (c *Client) Connect() error {
 	if c.ListenPort == 0 {
 		c.ListenPort = 10086
 	}
-	// 注册 wcf 服务
+	// 启动 rpc
+	if err := c.wxInitSDK(); err != nil {
+		return err
+	}
+	// 配置客户端
 	c.CmdClient = &CmdClient{
 		pbSocket: newPbSocket(c.ListenAddr, c.ListenPort),
 	}
 	c.MsgClient = &MsgClient{
 		pbSocket: newPbSocket(c.ListenAddr, c.ListenPort+1),
 	}
-	// 启动 wcf 服务
-	if err := c.wxInitSDK(); err != nil {
-		return err
-	}
-	// 自动注销 wcf
+	// 退出时注销
 	onquit.Register(func() {
-		c.CmdClient.Destroy()
 		c.MsgClient.Destroy()
+		c.CmdClient.Destroy()
 		c.wxDestroySDK()
 	})
 	// 返回连接结果
@@ -53,10 +50,10 @@ func (c *Client) Connect() error {
 
 // 启动消息接收器
 // param pyq bool 是否接收朋友圈消息
-// param cb MsgCallback 消息回调函数，可选参数
+// param cb MsgConsumer 消息回调函数，可选参数
 // return string 接收器唯一标识
-func (c *Client) EnrollReceiver(pyq bool, cb MsgCallback) (string, error) {
-	if c.MsgClient.callbacks == nil {
+func (c *Client) EnrollReceiver(pyq bool, cb MsgConsumer) (string, error) {
+	if c.MsgClient.consumer == nil {
 		if c.CmdClient.EnableMsgReciver(true) != 0 {
 			return "", errors.New("failed to enable msg server")
 		}
@@ -70,7 +67,7 @@ func (c *Client) EnrollReceiver(pyq bool, cb MsgCallback) (string, error) {
 // return error 错误信息
 func (c *Client) DisableReceiver(ks ...string) error {
 	err := c.MsgClient.Destroy(ks...)
-	if c.MsgClient.callbacks == nil {
+	if c.MsgClient.consumer == nil {
 		if c.CmdClient.DisableMsgReciver() != 0 {
 			return errors.New("failed to disable msg server")
 		}
@@ -81,50 +78,13 @@ func (c *Client) DisableReceiver(ks ...string) error {
 // 启动 wcf 服务
 // return error 错误信息
 func (c *Client) wxInitSDK() error {
-	if c.WcfBinary == "" {
-		return nil
-	}
-	// 尝试自动启动微信
-	if c.WeChatAuto {
-		out, _ := exec.Command("tasklist").Output()
-		if strings.Contains(string(out), "WeChat.exe") {
-			return errors.New("please close wechat")
-		}
-	}
-	// 查找 wcf.exe 路径
-	if !filer.Exists(c.WcfBinary) {
-		if filer.Exists("wcferry/wcf.exe") {
-			c.WcfBinary = "wcferry/wcf.exe"
-		} else if filer.Exists("wcferry/bin/wcf.exe") {
-			c.WcfBinary = "wcferry/bin/wcf.exe"
-		} else {
-			return errors.New("wcf.exe not found")
-		}
-	}
-	// 注入微信，打开 wcf 服务
-	logman.Warn(c.WcfBinary + " start " + strconv.Itoa(c.ListenPort))
-	cmd := exec.Command(c.WcfBinary, "start", strconv.Itoa(c.ListenPort))
-	return cmd.Run()
+	err := c.sdkCall("WxInitSDK", uintptr(0), uintptr(c.ListenPort))
+	time.Sleep(5 * time.Second)
+	return err
 }
 
 // 关闭 wcf 服务
 // return error 错误信息
 func (c *Client) wxDestroySDK() error {
-	if c.WcfBinary == "" {
-		return nil
-	}
-	// 关闭 wcf 服务
-	logman.Warn(c.WcfBinary + " stop")
-	cmd := exec.Command(c.WcfBinary, "stop")
-	err := cmd.Run()
-	// 尝试自动关闭微信
-	if err == nil && c.WeChatAuto {
-		logman.Warn("killing wechat process")
-		cmd := exec.Command("taskkill", "/IM", "WeChat.exe", "/F")
-		if err := cmd.Run(); err != nil {
-			logman.Error("failed to kill wechat", "error", err)
-			return err
-		}
-	}
-	return err
+	return c.sdkCall("WxDestroySDK")
 }

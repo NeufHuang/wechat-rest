@@ -3,29 +3,32 @@ package llmodel
 import (
 	"github.com/opentdp/go-helper/dborm"
 
-	"github.com/opentdp/wechat-rest/dbase/tables"
+	"github.com/opentdp/wrest-chat/dbase/tables"
 )
 
 // 创建模型
 
 type CreateParam struct {
-	Mid      string `binding:"required"`
-	Provider string `binding:"required"`
-	Endpoint string
-	Family   string `binding:"required"`
-	Model    string `binding:"required"`
-	Secret   string `binding:"required"`
+	Rd       uint   `json:"rd"`
+	Mid      string `json:"mid" binding:"required"`
+	Level    int32  `json:"level"`
+	Family   string `json:"family" binding:"required"`
+	Provider string `json:"provider" binding:"required"`
+	Model    string `json:"model" binding:"required"`
+	Secret   string `json:"secret" binding:"required"`
+	Endpoint string `json:"endpoint"`
 }
 
 func Create(data *CreateParam) (uint, error) {
 
 	item := &tables.LLModel{
 		Mid:      data.Mid,
-		Provider: data.Provider,
-		Endpoint: data.Endpoint,
+		Level:    data.Level,
 		Family:   data.Family,
+		Provider: data.Provider,
 		Model:    data.Model,
 		Secret:   data.Secret,
+		Endpoint: data.Endpoint,
 	}
 
 	result := dborm.Db.Create(item)
@@ -42,14 +45,16 @@ func Update(data *UpdateParam) error {
 
 	result := dborm.Db.
 		Where(&tables.LLModel{
-			Mid: data.Mid,
+			Rd: data.Rd,
 		}).
 		Updates(tables.LLModel{
-			Provider: data.Provider,
-			Endpoint: data.Endpoint,
+			Mid:      data.Mid,
+			Level:    data.Level,
 			Family:   data.Family,
+			Provider: data.Provider,
 			Model:    data.Model,
 			Secret:   data.Secret,
+			Endpoint: data.Endpoint,
 		})
 
 	return result.Error
@@ -58,15 +63,18 @@ func Update(data *UpdateParam) error {
 
 // 合并模型
 
-type MigrateParam = CreateParam
+type ReplaceParam = CreateParam
 
-func Migrate(data *MigrateParam) error {
+func Replace(data *ReplaceParam) error {
 
-	item, err := Fetch(&FetchParam{
-		Mid: data.Mid,
-	})
+	rq := &FetchParam{Rd: data.Rd}
+	if rq.Rd == 0 {
+		rq.Mid = data.Mid
+	}
 
+	item, err := Fetch(rq)
 	if err == nil && item.Rd > 0 {
+		data.Rd = item.Rd
 		err = Update(data)
 	} else {
 		_, err = Create(data)
@@ -79,7 +87,8 @@ func Migrate(data *MigrateParam) error {
 // 获取模型
 
 type FetchParam struct {
-	Mid string `binding:"required"`
+	Rd  uint   `json:"rd"`
+	Mid string `json:"mid"`
 }
 
 func Fetch(data *FetchParam) (*tables.LLModel, error) {
@@ -88,6 +97,7 @@ func Fetch(data *FetchParam) (*tables.LLModel, error) {
 
 	result := dborm.Db.
 		Where(&tables.LLModel{
+			Rd:  data.Rd,
 			Mid: data.Mid,
 		}).
 		First(&item)
@@ -110,6 +120,7 @@ func Delete(data *DeleteParam) error {
 
 	result := dborm.Db.
 		Where(&tables.LLModel{
+			Rd:  data.Rd,
 			Mid: data.Mid,
 		}).
 		Delete(&item)
@@ -121,9 +132,10 @@ func Delete(data *DeleteParam) error {
 // 获取模型列表
 
 type FetchAllParam struct {
-	Provider string
-	Family   string
-	Model    string
+	Level    int32  `json:"level"`
+	Family   string `json:"family"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
 }
 
 func FetchAll(data *FetchAllParam) ([]*tables.LLModel, error) {
@@ -132,8 +144,9 @@ func FetchAll(data *FetchAllParam) ([]*tables.LLModel, error) {
 
 	result := dborm.Db.
 		Where(&tables.LLModel{
-			Provider: data.Provider,
+			Level:    data.Level,
 			Family:   data.Family,
+			Provider: data.Provider,
 			Model:    data.Model,
 		}).
 		Find(&items)
@@ -153,8 +166,9 @@ func Count(data *CountParam) (int64, error) {
 	result := dborm.Db.
 		Model(&tables.LLModel{}).
 		Where(&tables.LLModel{
-			Provider: data.Provider,
+			Level:    data.Level,
 			Family:   data.Family,
+			Provider: data.Provider,
 			Model:    data.Model,
 		}).
 		Count(&count)

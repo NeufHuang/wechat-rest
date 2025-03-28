@@ -3,33 +3,30 @@ package profile
 import (
 	"github.com/opentdp/go-helper/dborm"
 
-	"github.com/opentdp/wechat-rest/dbase/tables"
+	"github.com/opentdp/wrest-chat/dbase/tables"
 )
 
 // 创建配置
 
 type CreateParam struct {
-	Wxid    string `binding:"required"`
-	Roomid  string
-	Level   int32
-	Remark  string
-	AiArgot string
-	AiModel string
+	Rd        uint   `json:"rd"`
+	Wxid      string `json:"wxid" binding:"required"`
+	Roomid    string `json:"roomid"`
+	Level     int32  `json:"level"`
+	Remark    string `json:"remark"`
+	AiModel   string `json:"ai_model"`
+	BanExpire int64  `json:"ban_expire"`
 }
 
 func Create(data *CreateParam) (uint, error) {
 
-	if data.Roomid == "" {
-		data.Roomid = "-"
-	}
-
 	item := &tables.Profile{
-		Wxid:    data.Wxid,
-		Roomid:  data.Roomid,
-		Level:   data.Level,
-		Remark:  data.Remark,
-		AiArgot: data.AiArgot,
-		AiModel: data.AiModel,
+		Wxid:      data.Wxid,
+		Roomid:    data.Roomid,
+		Level:     data.Level,
+		Remark:    data.Remark,
+		AiModel:   data.AiModel,
+		BanExpire: data.BanExpire,
 	}
 
 	result := dborm.Db.Create(item)
@@ -44,20 +41,17 @@ type UpdateParam = CreateParam
 
 func Update(data *UpdateParam) error {
 
-	if data.Roomid == "" {
-		data.Roomid = "-"
-	}
-
 	result := dborm.Db.
 		Where(&tables.Profile{
-			Wxid:   data.Wxid,
-			Roomid: data.Roomid,
+			Rd: data.Rd,
 		}).
 		Updates(tables.Profile{
-			Level:   data.Level,
-			Remark:  data.Remark,
-			AiArgot: data.AiArgot,
-			AiModel: data.AiModel,
+			Wxid:      data.Wxid,
+			Roomid:    data.Roomid,
+			Level:     data.Level,
+			Remark:    data.Remark,
+			AiModel:   data.AiModel,
+			BanExpire: data.BanExpire,
 		})
 
 	return result.Error
@@ -66,20 +60,19 @@ func Update(data *UpdateParam) error {
 
 // 合并配置
 
-type MigrateParam = CreateParam
+type ReplaceParam = CreateParam
 
-func Migrate(data *MigrateParam) error {
+func Replace(data *ReplaceParam) error {
 
-	if data.Roomid == "" {
-		data.Roomid = "-"
+	rq := &FetchParam{Rd: data.Rd}
+	if rq.Rd == 0 {
+		rq.Wxid = data.Wxid
+		rq.Roomid = data.Roomid
 	}
 
-	item, err := Fetch(&FetchParam{
-		Wxid:   data.Wxid,
-		Roomid: data.Roomid,
-	})
-
+	item, err := Fetch(rq)
 	if err == nil && item.Rd > 0 {
+		data.Rd = item.Rd
 		err = Update(data)
 	} else {
 		_, err = Create(data)
@@ -92,20 +85,18 @@ func Migrate(data *MigrateParam) error {
 // 获取配置
 
 type FetchParam struct {
-	Wxid   string `binding:"required"`
-	Roomid string
+	Rd     uint   `json:"rd"`
+	Wxid   string `json:"wxid"`
+	Roomid string `json:"roomid"`
 }
 
 func Fetch(data *FetchParam) (*tables.Profile, error) {
 
 	var item *tables.Profile
 
-	if data.Roomid == "" {
-		data.Roomid = "-"
-	}
-
 	result := dborm.Db.
 		Where(&tables.Profile{
+			Rd:     data.Rd,
 			Wxid:   data.Wxid,
 			Roomid: data.Roomid,
 		}).
@@ -127,12 +118,9 @@ func Delete(data *DeleteParam) error {
 
 	var item *tables.Profile
 
-	if data.Roomid == "" {
-		data.Roomid = "-"
-	}
-
 	result := dborm.Db.
 		Where(&tables.Profile{
+			Rd:     data.Rd,
 			Wxid:   data.Wxid,
 			Roomid: data.Roomid,
 		}).
@@ -145,8 +133,9 @@ func Delete(data *DeleteParam) error {
 // 获取配置列表
 
 type FetchAllParam struct {
-	Wxid   string
-	Roomid string
+	Wxid   string `json:"wxid"`
+	Roomid string `json:"roomid"`
+	Level  int32  `json:"level"`
 }
 
 func FetchAll(data *FetchAllParam) ([]*tables.Profile, error) {
@@ -157,6 +146,7 @@ func FetchAll(data *FetchAllParam) ([]*tables.Profile, error) {
 		Where(&tables.Profile{
 			Wxid:   data.Wxid,
 			Roomid: data.Roomid,
+			Level:  data.Level,
 		}).
 		Find(&items)
 
@@ -177,6 +167,7 @@ func Count(data *CountParam) (int64, error) {
 		Where(&tables.Profile{
 			Wxid:   data.Wxid,
 			Roomid: data.Roomid,
+			Level:  data.Level,
 		}).
 		Count(&count)
 

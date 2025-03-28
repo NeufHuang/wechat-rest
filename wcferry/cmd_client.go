@@ -2,6 +2,7 @@ package wcferry
 
 import (
 	"errors"
+	"path"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ func (c *CmdClient) IsLogin() bool {
 	return recv.GetStatus() == 1
 }
 
-// 刷新登录二维码
+// 刷新登录二维码【not implemented】
 // return string 登录二维码
 func (c *CmdClient) RefreshQrcode() string {
 	req := &Request{Func: Functions_FUNC_REFRESH_QRCODE}
@@ -121,7 +122,7 @@ func (c *CmdClient) GetChatRoomMembers(roomid string) []*RpcContact {
 	members := []*RpcContact{}
 	// get room data
 	roomList := c.DbSqlQuery("MicroMsg.db", "SELECT RoomData FROM ChatRoom WHERE ChatRoomName = '"+roomid+"';")
-	if len(roomList) == 0 || len(roomList[0]) == 0 {
+	if len(roomList) == 0 || len(roomList[0]) == 0 || roomList[0]["RoomData"] == nil {
 		return members
 	}
 	roomData := &RoomData{}
@@ -157,11 +158,13 @@ func (c *CmdClient) GetAliasInChatRoom(wxid, roomid string) string {
 	nickName := ""
 	userList := c.DbSqlQuery("MicroMsg.db", "SELECT NickName FROM Contact WHERE UserName = '"+wxid+"';")
 	if len(userList) > 0 && len(userList[0]) > 0 {
-		nickName = userList[0]["NickName"].(string)
+		if userList[0]["NickName"] != nil {
+			nickName = userList[0]["NickName"].(string)
+		}
 	}
 	// get room data
 	roomList := c.DbSqlQuery("MicroMsg.db", "SELECT RoomData FROM ChatRoom WHERE ChatRoomName = '"+roomid+"';")
-	if len(roomList) == 0 || len(roomList[0]) == 0 {
+	if len(roomList) == 0 || len(roomList[0]) == 0 || roomList[0]["RoomData"] == nil {
 		return nickName
 	}
 	roomData := &RoomData{}
@@ -257,7 +260,7 @@ func (c *CmdClient) ForwardMsg(msgid uint64, receiver string) int32 {
 }
 
 // 发送文本消息
-// param msg string 要发送的消息，换行使用 `\\\\n` （单杠）；如果 @ 人的话，需要带上跟 `aters` 里数量相同的 @
+// param msg string 要发送的消息，\n使用 `\\\\n` （单杠）；如果 @ 人的话，需要带上跟 `aters` 里数量相同的 @
 // param receiver string 消息接收人，wxid 或者 roomid
 // param aters string 要 @ 的 wxid，多个用逗号分隔；`@所有人` 只需要 `notify@all`
 // return int32 0 为成功，其他失败
@@ -480,7 +483,10 @@ func (c *CmdClient) GetOcrResultTimeout(extra string, timeout int) (string, erro
 // return string 成功返回存储路径
 func (c *CmdClient) DownloadImage(msgid uint64, extra, dir string, timeout int) (string, error) {
 	if c.DownloadAttach(msgid, "", extra) != 0 {
-		return "", errors.New("failed to download attach")
+		time.Sleep(1 * time.Second)
+		if c.DownloadAttach(msgid, "", extra) != 0 {
+			return "", errors.New("download failed")
+		}
 	}
 	cnt := 0
 	for cnt <= timeout {
@@ -518,6 +524,9 @@ func (c *CmdClient) DownloadAttach(msgid uint64, thumb, extra string) int32 {
 // param dir string 保存图片的目录
 // return str 解密图片的保存路径
 func (c *CmdClient) DecryptImage(src, dir string) string {
+	if dir == "" {
+		dir = path.Dir(src)
+	}
 	req := &Request{Func: Functions_FUNC_DECRYPT_IMAGE}
 	req.Msg = &Request_Dec{
 		Dec: &DecPath{
@@ -549,7 +558,7 @@ func (c *CmdClient) GetFriends() []*RpcContact {
 	return friends
 }
 
-// 通过 wxid 查询微信号昵称等信息
+// 通过 wxid 查询微信号昵称等信息【not implemented】
 // param wxid (str): 联系人 wxid
 // return *RpcContact
 func (c *CmdClient) GetInfoByWxid(wxid string) *RpcContact {
@@ -580,7 +589,7 @@ func (c *CmdClient) RefreshPyq(id uint64) int32 {
 	return recv.GetStatus()
 }
 
-// 接受好友申请
+// 接受好友申请【not implemented】
 // param v3 string 加密用户名 (好友申请消息里 v3 开头的字符串)
 // param v4 string Ticket (好友申请消息里 v4 开头的字符串)
 // param scene int32 申请方式 (好友申请消息里的 scene); 为了兼容旧接口，默认为扫码添加 (30)

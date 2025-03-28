@@ -1,38 +1,41 @@
 package robot
 
 import (
-	"github.com/opentdp/wechat-rest/dbase/chatroom"
-	"github.com/opentdp/wechat-rest/wcferry"
+	"github.com/opentdp/wrest-chat/dbase/chatroom"
+	"github.com/opentdp/wrest-chat/wcferry"
 )
 
-func roomHandler() {
+func roomHandler() []*Handler {
+
+	cmds := []*Handler{}
 
 	rooms, err := chatroom.FetchAll(&chatroom.FetchAllParam{})
-	if err != nil {
-		return
+
+	if err == nil && len(rooms) > 0 {
+		for k, v := range rooms {
+			if len(v.JoinArgot) < 2 {
+				continue
+			}
+			v := v // copy
+			cmdkey := "/jr:" + v.JoinArgot
+			cmds = append(cmds, &Handler{
+				Level:    -1,
+				Order:    510 + int32(k),
+				Roomid:   "-",
+				Command:  cmdkey,
+				Describe: v.Name,
+				Callback: func(msg *wcferry.WxMsg) string {
+					resp := wc.CmdClient.InviteChatroomMembers(v.Roomid, msg.Sender)
+					if resp == 1 {
+						return "已发送群邀请，稍后请点击进入"
+					} else {
+						return "发送群邀请失败"
+					}
+				},
+			})
+		}
 	}
 
-	for _, v := range rooms {
-		if len(v.JoinArgot) < 2 {
-			continue
-		}
-		room := v // copy
-		cmdkey := "/g:" + room.JoinArgot
-		handlers[cmdkey] = &Handler{
-			Level:    0,
-			Order:    70,
-			ChatAble: true,
-			RoomAble: false,
-			Describe: "加入群聊 " + room.Name,
-			Callback: func(msg *wcferry.WxMsg) string {
-				resp := wc.CmdClient.InviteChatroomMembers(room.Roomid, msg.Sender)
-				if resp == 1 {
-					return "已发送群邀请，稍后请点击进入"
-				} else {
-					return "发送群邀请失败"
-				}
-			},
-		}
-	}
+	return cmds
 
 }

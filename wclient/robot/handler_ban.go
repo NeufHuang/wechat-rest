@@ -2,84 +2,111 @@ package robot
 
 import (
 	"encoding/xml"
+	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/opentdp/wechat-rest/dbase/chatroom"
-	"github.com/opentdp/wechat-rest/dbase/profile"
-	"github.com/opentdp/wechat-rest/wcferry"
-	"github.com/opentdp/wechat-rest/wcferry/types"
+	"github.com/opentdp/wrest-chat/dbase/chatroom"
+	"github.com/opentdp/wrest-chat/dbase/profile"
+	"github.com/opentdp/wrest-chat/wcferry"
+	"github.com/opentdp/wrest-chat/wcferry/types"
 )
 
-func banHandler() {
+func banHandler() []*Handler {
 
-	handlers["/ban"] = &Handler{
+	cmds := []*Handler{}
+
+	cmds = append(cmds, &Handler{
 		Level:    7,
-		Order:    40,
-		ChatAble: false,
-		RoomAble: true,
-		Describe: "禁止用户使用助手",
+		Order:    320,
+		Roomid:   "+",
+		Command:  "/ban",
+		Describe: "拉黑指定的用户",
 		Callback: func(msg *wcferry.WxMsg) string {
-			ret := &types.AtMsgSource{}
+			ret := &types.MsgXmlAtUser{}
 			err := xml.Unmarshal([]byte(msg.Xml), ret)
 			if err == nil && ret.AtUserList != "" {
-				list := strings.Split(ret.AtUserList, ",")
-				for _, v := range list {
+				// 获取拉黑时限
+				parts := strings.Split(msg.Content, " ")
+				second, err := strconv.Atoi(parts[0])
+				if err != nil {
+					second = 86400
+				}
+				// 批量操作拉黑
+				users := strings.Split(ret.AtUserList, ",")
+				for _, v := range users {
 					if v == "" {
 						continue
 					}
-					// 权限检查
-					up, _ := profile.Fetch(&profile.FetchParam{Wxid: v, Roomid: msg.Roomid})
-					if up.Level == 9 {
+					// 管理豁免
+					up, _ := profile.Fetch(&profile.FetchParam{Wxid: v, Roomid: prid(msg)})
+					if up.Level > 6 {
 						return "禁止操作管理员"
 					}
-					// 禁止使用
-					profile.Migrate(&profile.UpdateParam{Wxid: v, Roomid: msg.Roomid, Level: 1})
+					// 拉黑用户
+					expire := time.Now().Unix() + int64(second)
+					profile.Replace(&profile.ReplaceParam{Wxid: v, Roomid: prid(msg), BanExpire: expire})
 				}
-				return "操作成功"
+				return fmt.Sprintf("已拉黑，有效期 %d 秒", second)
 			}
 			return "参数错误"
 		},
 		PreCheck: banPreCheck,
-	}
+	})
 
-	handlers["/unban"] = &Handler{
+	cmds = append(cmds, &Handler{
 		Level:    7,
-		Order:    41,
-		ChatAble: false,
-		RoomAble: true,
-		Describe: "允许用户使用助手",
+		Order:    321,
+		Roomid:   "+",
+		Command:  "/ban:rm",
+		Describe: "解封拉黑的用户",
 		Callback: func(msg *wcferry.WxMsg) string {
-			ret := &types.AtMsgSource{}
+			ret := &types.MsgXmlAtUser{}
 			err := xml.Unmarshal([]byte(msg.Xml), ret)
 			if err == nil && ret.AtUserList != "" {
-				list := strings.Split(ret.AtUserList, ",")
-				for _, v := range list {
+				users := strings.Split(ret.AtUserList, ",")
+				for _, v := range users {
 					if v == "" {
 						continue
 					}
-					profile.Migrate(&profile.UpdateParam{Wxid: v, Roomid: msg.Roomid, Level: 2})
+					// 管理豁免
+					up, _ := profile.Fetch(&profile.FetchParam{Wxid: v, Roomid: prid(msg)})
+					if up.Level > 6 {
+						return "禁止操作管理员"
+					}
+					// 解封用户
+					profile.Replace(&profile.ReplaceParam{Wxid: v, Roomid: prid(msg), BanExpire: -1})
 				}
-				return "操作成功"
+				return "已解封用户"
 			}
 			return "参数错误"
 		},
-	}
+	})
+
+	return cmds
 
 }
 
 func banPreCheck(msg *wcferry.WxMsg) string {
 
+	// 管理豁免
+	up, _ := profile.Fetch(&profile.FetchParam{Wxid: msg.Sender, Roomid: prid(msg)})
+	if up.Level > 6 {
+		return ""
+	}
+
+	// 群聊已拉黑
 	if msg.IsGroup {
 		room, _ := chatroom.Fetch(&chatroom.FetchParam{Roomid: msg.Roomid})
 		if room.Level == 1 {
-			msg.Content = ""
-			return ""
+			return "-"
 		}
 	}
 
-	up, _ := profile.Fetch(&profile.FetchParam{Wxid: msg.Sender, Roomid: msg.Roomid})
-	if up.Level == 1 {
-		msg.Content = ""
+	// 用户已拉黑
+	if up.Level == 1 || up.BanExpire > time.Now().Unix() {
+		return "-"
 	}
 
 	return ""

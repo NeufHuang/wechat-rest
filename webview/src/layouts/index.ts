@@ -1,6 +1,12 @@
-import { HeaderComponent } from './header';
+import { LayoutAichatComponent } from './aichat';
+import { LayoutHeaderComponent } from './header';
+import { LayoutToastComponent } from './toast';
+import { LayoutWechatComponent } from './wechat';
 
 
 export const AppLayouts = [
-    HeaderComponent,
+    LayoutAichatComponent,
+    LayoutHeaderComponent,
+    LayoutToastComponent,
+    LayoutWechatComponent,
 ];

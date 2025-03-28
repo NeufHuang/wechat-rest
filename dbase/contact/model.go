@@ -3,20 +3,20 @@ package contact
 import (
 	"github.com/opentdp/go-helper/dborm"
 
-	"github.com/opentdp/wechat-rest/dbase/tables"
+	"github.com/opentdp/wrest-chat/dbase/tables"
 )
 
 // 创建联系人
 
 type CreateParam struct {
-	Wxid     string `binding:"required"`
-	Code     string
-	Remark   string
-	Name     string
-	Country  string
-	Province string
-	City     string
-	Gender   int32
+	Wxid     string `json:"wxid" binding:"required"`
+	Code     string `json:"code"`
+	Remark   string `json:"remark"`
+	Name     string `json:"name"`
+	Country  string `json:"country"`
+	Province string `json:"province"`
+	City     string `json:"city"`
+	Gender   int32  `json:"gender"`
 }
 
 func Create(data *CreateParam) (uint, error) {
@@ -62,14 +62,15 @@ func Update(data *UpdateParam) error {
 
 // 合并联系人
 
-type MigrateParam = CreateParam
+type ReplaceParam = CreateParam
 
-func Migrate(data *MigrateParam) error {
+func Replace(data *ReplaceParam) error {
 
-	item, err := Fetch(&FetchParam{
+	rq := &FetchParam{
 		Wxid: data.Wxid,
-	})
+	}
 
+	item, err := Fetch(rq)
 	if err == nil && item.Rd > 0 {
 		err = Update(data)
 	} else {
@@ -83,7 +84,7 @@ func Migrate(data *MigrateParam) error {
 // 获取联系人
 
 type FetchParam struct {
-	Wxid string `binding:"required"`
+	Wxid string `json:"wxid" binding:"required"`
 }
 
 func Fetch(data *FetchParam) (*tables.Contact, error) {
@@ -125,7 +126,7 @@ func Delete(data *DeleteParam) error {
 // 获取联系人列表
 
 type FetchAllParam struct {
-	Gender int32
+	Gender int32 `json:"gender"`
 }
 
 func FetchAll(data *FetchAllParam) ([]*tables.Contact, error) {

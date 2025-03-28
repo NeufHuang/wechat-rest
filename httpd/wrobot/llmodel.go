@@ -3,7 +3,8 @@ package wrobot
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/opentdp/wechat-rest/dbase/llmodel"
+	"github.com/opentdp/wrest-chat/dbase/llmodel"
+	"github.com/opentdp/wrest-chat/wclient/robot"
 )
 
 type LLModel struct{}
@@ -12,12 +13,11 @@ type LLModel struct{}
 // @Produce json
 // @Tags BOT::大语言模型
 // @Param body body llmodel.FetchAllParam true "获取模型列表参数"
-// @Success 200 {object} []tables.LLModel
+// @Success 200 {array} tables.LLModel
 // @Router /bot/llmodel/list [post]
 func (*LLModel) list(c *gin.Context) {
 
 	var rq *llmodel.FetchAllParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -40,7 +40,6 @@ func (*LLModel) list(c *gin.Context) {
 func (*LLModel) detail(c *gin.Context) {
 
 	var rq *llmodel.FetchParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -63,7 +62,6 @@ func (*LLModel) detail(c *gin.Context) {
 func (*LLModel) create(c *gin.Context) {
 
 	var rq *llmodel.CreateParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -72,6 +70,7 @@ func (*LLModel) create(c *gin.Context) {
 	if id, err := llmodel.Create(rq); err == nil {
 		c.Set("Message", "添加成功")
 		c.Set("Payload", id)
+		robot.Reset()
 	} else {
 		c.Set("Error", err)
 	}
@@ -87,7 +86,6 @@ func (*LLModel) create(c *gin.Context) {
 func (*LLModel) update(c *gin.Context) {
 
 	var rq *llmodel.UpdateParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -95,6 +93,7 @@ func (*LLModel) update(c *gin.Context) {
 
 	if err := llmodel.Update(rq); err == nil {
 		c.Set("Message", "更新成功")
+		robot.Reset()
 	} else {
 		c.Set("Error", err)
 	}
@@ -110,7 +109,6 @@ func (*LLModel) update(c *gin.Context) {
 func (*LLModel) delete(c *gin.Context) {
 
 	var rq *llmodel.DeleteParam
-
 	if err := c.ShouldBind(&rq); err != nil {
 		c.Set("Error", err)
 		return
@@ -118,6 +116,7 @@ func (*LLModel) delete(c *gin.Context) {
 
 	if err := llmodel.Delete(rq); err == nil {
 		c.Set("Message", "删除成功")
+		robot.Reset()
 	} else {
 		c.Set("Error", err)
 	}
